@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kasara Life - Volume Reaction</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    .image-container {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 30px);
+    }
+    img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.5s ease;
+    }
+    #imageA { opacity: 1; }
+    #imageB { opacity: 0; }
+
+    .volume-bar-container {
+      height: 30px;
+      background: #333;
+    }
+    .volume-bar {
+      height: 100%;
+      background: limegreen;
+      width: 0%;
+      transition: width 0.1s;
+    }
+  </style>
+</head>
+<body>
+  <div class="image-container">
+    <img id="imageA" src="imageA.jpg" alt="Quiet Image">
+    <img id="imageB" src="imageB.jpg" alt="Loud Image">
+  </div>
+  <div class="volume-bar-container">
+    <div class="volume-bar" id="volumeBar"></div>
+  </div>
+
+  <script>
+    async function startMicVolumeDetection() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      source.connect(analyser);
+
+      const imageA = document.getElementById('imageA');
+      const imageB = document.getElementById('imageB');
+      const volumeBar = document.getElementById('volumeBar');
+      const THRESHOLD = 50;
+
+      function getVolume() {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        return sum / dataArray.length;
+      }
+
+      function update() {
+        const volume = getVolume();
+        const volumePercent = Math.min((volume / 100) * 100, 100);
+        volumeBar.style.width = `${volumePercent}%`;
+
+        if (volume > THRESHOLD) {
+          imageA.style.opacity = 0;
+          imageB.style.opacity = 1;
+        } else {
+          imageA.style.opacity = 1;
+          imageB.style.opacity = 0;
+        }
+        requestAnimationFrame(update);
+      }
+
+      update();
+    }
+
+    startMicVolumeDetection().catch(err => {
+      alert("Mic access is required to run this app.");
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
